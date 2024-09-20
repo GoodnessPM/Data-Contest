@@ -1,0 +1,150 @@
+---
+title: "PROJECT 2"
+author: "GOODNESS NWOKEBU"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+
+## 1.0: Load the data
+```{r}
+#Sample code to import the dataset in R
+yengoHeight <- "https://raw.githubusercontent.com/HackBio-Internship/public_datasets/main/R/datasets/Contests/humanGeneticVariationsSamples.tsv"
+yengoHeight <- read.table(yengoHeight)
+head(yengoHeight)
+class(yengoHeight)
+
+```
+
+
+
+
+```{r}
+
+##Data Preprocessing
+
+summary(yengoHeight)
+
+```
+
+## 1.1 Data Cleaning
+
+```{r}
+# Removing Null set
+yengoHeight <- na.omit(yengoHeight)
+#inappropriate data types
+yengoHeight$CHR <- as.character(yengoHeight$CHR)
+
+```
+
+
+
+## 1.2 Data Visualisation
+
+```{r}
+boxplot(P ~ ANCESTRY, data = yengoHeight, col = 'lightpink', 
+        main = "Box Plot of P by ANCESTRY", xlab = "ANCESTRY", ylab = "P")
+```
+```{r}
+plot(density(yengoHeight$EFFECT_ALLELE_FREQ), col = "lightpink", main = "Density Plot of EFFECT_ALLELE_FREQ", xlab = "EFFECT_ALLELE_FREQ")
+```
+```{r}
+hist(yengoHeight$EFFECT_ALLELE_FREQ, xlab = 'MAF', ylab = 'Frequency', col = 'lightpink', main = "Histogram of EFFECT_ALLELE_FREQ")
+```
+
+
+
+
+```{r}
+
+# Calculate average effect sizes for each SNP, stratified by ancestry
+average_effect_sizes <- aggregate(yengoHeight$BETA ~ yengoHeight$ANCESTRY, FUN = mean)
+
+# Create a bar plot of average effect sizes by ancestry
+barplot(average_effect_sizes[, 2], names.arg = average_effect_sizes[, 1], col = "pink", 
+        main = "Average Effect Sizes by Ancestry", xlab = "Ancestry", ylab = "Average Effect Size")
+
+
+```
+## 1.3 Data Analysis
+
+### Question 1
+##### How many SNPs are significant (p-value < 0.01) for variability in height (MAF > 0.01) in all the super populations.
+
+```{r}
+# Step 1: Filter the data based on the conditions
+filtered_snps <- yengoHeight[yengoHeight$P < 0.01 & yengoHeight$EFFECT_ALLELE_FREQ > 0.01, ]
+
+# Step 2: Count the number of SNPs that satisfy the conditions in step1 
+num_significant_snps <- nrow(filtered_snps)
+
+
+print(paste("The number of significant SNPs for variability in height (P-value < 0.01 and MAF > 0.01) in all super populations is:", num_significant_snps))
+
+
+
+```
+
+#### what  five Chromosomes should we look out for significant SNPs ?
+```{r}
+# Find the chromosome number that is most frequent
+chromosome_counts <- table(filtered_snps$CHR)
+
+
+
+# Sort the chromosome counts in descending order and select the top 5 values
+top_chromosomes <- head(sort(chromosome_counts, decreasing = TRUE), 5)
+
+# Create a bar plot for the top 5 most frequent chromosome numbers
+barplot(top_chromosomes, main = "Top 5 Most Frequent Chromosome Numbers",
+        xlab = "Chromosome Number", ylab = "Frequency", col = "pink")
+
+
+
+```
+Chromosomes 2, 1,6,5,3 is shown to be the top chromosomes that genetic variation occurs.
+
+### Which ancestry have the most signiicant genetic variability?
+
+```{r}
+# Calculate the frequency of each unique value in the 'ANCESTRY' column
+ancestry_counts <- table(filtered_snps$ANCESTRY)
+most_common_ancestry <- names(ancestry_counts)[which.max(ancestry_counts)]
+
+
+
+
+num_ancestries <- length(ancestry_counts)
+custom_palette <- colorRampPalette(c("pink","deeppink", "white"))(num_ancestries)
+pie(ancestry_counts, main = "Distribution of Ancestry", col = custom_palette, labels = names(ancestry_counts), cex = 0.8)
+
+```
+## Question 2
+#### How much of Europeans genetic variability can/cannot be found in other super populations. 
+
+The question about the proportion of European genetic variability that can or cannot be found in other super populations raises points is related to population genetics and the significance of diversity in sequencing projects.
+
+Defining a Null Hypothesis will help with that:
+
+Null Hypothesis: The genetic variability observed in the European population is not significantly different from the genetic variability observed in other super populations.
+
+To investigate this question, a Chi square statistical test will be used for the analysis. 
+
+```{r}
+european_data <- filtered_snps[yengoHeight$ANCESTRY == 'European', ]
+european_variability <- sum(european_data$EFFECT_ALLELE_FREQ)
+
+# Calculate the observed genetic variability in other super populations
+other_data <- yengoHeight[yengoHeight$ANCESTRY != 'European', ]
+other_variability <- sum(other_data$EFFECT_ALLELE_FREQ)
+
+# Perform a chi-squared test
+chisq_result <- chisq.test(c(european_variability, other_variability))
+print(chisq_result)
+```
+The extremely small p-value strongly suggests that there is a significant difference in genetic variability between the European population and other super populations. The large chi-squared value further supports this conclusion, indicating a substantial deviation from the expected values under the null hypothesis.
+
+##### Hence we reject the Null Hypothesis
+
